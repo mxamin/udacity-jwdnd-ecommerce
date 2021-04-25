@@ -1,10 +1,9 @@
 package com.example.demo.controllers;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,7 +22,7 @@ import com.example.demo.model.requests.CreateUserRequest;
 @RequestMapping("/api/user")
 public class UserController {
 
-	private final Logger log = LoggerFactory.getLogger(UserController.class);
+	public static final Logger logger = LogManager.getLogger(UserController.class);
 	
 	@Autowired
 	private UserRepository userRepository;
@@ -49,14 +48,19 @@ public class UserController {
 	public ResponseEntity<User> createUser(@RequestBody CreateUserRequest createUserRequest) {
 		User user = new User();
 		user.setUsername(createUserRequest.getUsername());
-		log.info("Username set with {}", createUserRequest.getUsername());
 
 		Cart cart = new Cart();
 		cartRepository.save(cart);
 		user.setCart(cart);
-		if (createUserRequest.getPassword().length() < 7 || !createUserRequest.getPassword().equals(createUserRequest.getConfirmPassword())) {
+		if (!createUserRequest.getPassword().equals(createUserRequest.getConfirmPassword())) {
+			logger.error("User can not be created, Password should match confirm Password.");
 			return ResponseEntity.badRequest().build();
 		}
+		else if (createUserRequest.getPassword().length() < 7) {
+			logger.error("User cannot be created, Password length should be greater than or equal 7.");
+			return ResponseEntity.badRequest().build();
+		}
+		logger.info("User created successfully.");
 		user.setPassword(bCryptPasswordEncoder.encode(createUserRequest.getPassword()));
 		userRepository.save(user);
 		return ResponseEntity.ok(user);

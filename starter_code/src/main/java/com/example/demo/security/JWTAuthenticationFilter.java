@@ -9,6 +9,9 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.example.demo.controllers.UserController;
+import org.apache.log4j.LogManager;
+import org.apache.log4j.Logger;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -23,7 +26,9 @@ import static com.auth0.jwt.algorithms.Algorithm.HMAC512;
 
 public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
 
-	 private AuthenticationManager authenticationManager;
+    public static final Logger logger = LogManager.getLogger(JWTAuthenticationFilter.class);
+
+    private final AuthenticationManager authenticationManager;
 
     public JWTAuthenticationFilter(AuthenticationManager authenticationManager) {
         this.authenticationManager = authenticationManager;
@@ -35,13 +40,15 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
     	try {
     		User credentials = new ObjectMapper()
                     .readValue(req.getInputStream(), User.class);
-    		
+
+
     		return authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             credentials.getUsername(),
                             credentials.getPassword(),
                             new ArrayList<>()));
     	} catch (IOException e) {
+    	    logger.fatal("Something went badly wrong during authentication.");
     		throw new RuntimeException(e);
     	}
     }
@@ -57,5 +64,11 @@ public class JWTAuthenticationFilter extends UsernamePasswordAuthenticationFilte
                 .withExpiresAt(new Date(System.currentTimeMillis() + SecurityConstants.EXPIRATION_TIME))
                 .sign(HMAC512(SecurityConstants.SECRET.getBytes()));
         res.addHeader(SecurityConstants.HEADER_STRING, SecurityConstants.TOKEN_PREFIX + token);
+    }
+
+    @Override
+    protected void unsuccessfulAuthentication(HttpServletRequest req, HttpServletResponse res, AuthenticationException failed) throws IOException, ServletException {
+        logger.info("Incorrect username or password");
+        super.unsuccessfulAuthentication(req, res, failed);
     }
 }
